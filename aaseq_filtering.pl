@@ -1,11 +1,11 @@
-#! user/bin/perl
+#!/usr/bin/perl
 ###############################################################################
 #
-#    fasta_header_rename.pl
+#    aaseq_filtering.pl
 #
-#	 Simplify the fasta header of each sequence record to create required input
-#    data file by PAML.
-#
+#	 Extract the fasta sequence more than 150 nt and remove the stop codon per
+#    ORF.
+#    
 #    Copyright (C) 2013 Zhuofei Xu
 #
 #    This program is free software: you can redistribute it and/or modify
@@ -20,12 +20,12 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.    
-#    
 #
 ###############################################################################
 
 use strict;
 use warnings;
+use Bio::SeqIO;
 
 #core Perl modules
 use Getopt::Long;
@@ -42,12 +42,12 @@ BEGIN {
 my $global_options = checkParams();
 
 my $inputfile;
-my $ingenomeid;
+my $threshold;
 my $outputfile;
 
 $inputfile = &overrideDefault("inputfile.fasta",'inputfile');
-$ingenomeid = &overrideDefault("genomeid",'ingenomeid');
-$outputfile = &overrideDefault("outputfile.txt",'outputfile');
+$threshold = &overrideDefault("threshold.value",'threshold');
+$outputfile = &overrideDefault("outputfile.fasta",'outputfile');
  
 
 
@@ -55,26 +55,17 @@ $outputfile = &overrideDefault("outputfile.txt",'outputfile');
 # CODE
 ######################################################################
 
-	
-open (IN, "$inputfile") or die;
+my $in = new Bio::SeqIO(-format => 'fasta', -file => "$inputfile");
 open (OUT, ">$outputfile") or die;
 
-my $d = 0;
-my $new_d = 0000;
+while( my $seq = $in->next_seq ) {
 
-while (<IN>){
-	chomp;
-	if (/^>(.*)/){
-	    $d++;
-		$new_d = sprintf("%04d",$d);
-		print OUT ">$ingenomeid"."_$new_d\n";
-		
-	}
-	else {
-	print OUT "$_\n";
+	if (($seq->length) >= $threshold){
+		print OUT ">",$seq->display_id, "\n";
+		my $len = ($seq->length) - 1;
+		 print OUT $seq->subseq(1,$len),"\n";
 	}
 }
-close (IN);
 
 ######################################################################
 # TEMPLATE SUBS
@@ -83,7 +74,7 @@ sub checkParams {
     #-----
     # Do any and all options checking here...
     #
-    my @standard_options = ( "help|h+", "inputfile|i:s", "ingenomeid|d:s", "outputfile|o:s");
+    my @standard_options = ( "help|h+", "inputfile|i:s", "threshold|t:s", "outputfile|o:s");
     my %options;
 
     # Add any other command line options, and the code to handle them
@@ -121,7 +112,7 @@ __DATA__
 
 =head1 NAME
 
-    fasta_header_rename.pl
+    seq_filtering.pl
 
 =head1 COPYRIGHT
 
@@ -142,16 +133,16 @@ __DATA__
 
 =head1 DESCRIPTION
 
-	Simplify the fasta header of each sequence record to create required input
-    data file by PAML.
+	Extract the fasta sequence more than 150 nt and remove the stop codon per
+    ORF.
 
 =head1 SYNOPSIS
 
-script.pl  -i -d -o [-h]
+script.pl  -i -t -o [-h]
 
  [-help -h]                 Displays this basic usage information
  [-inputfile -i]            Input fasta file 
- [-genome_identifier -d]    A short identifier instead of GenBank accession number
+ [-length_threshold -t]     A threshold value for sequence length
  [-outputfile -o]           Outputfile
  
 =cut

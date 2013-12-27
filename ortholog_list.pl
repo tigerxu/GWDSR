@@ -1,11 +1,11 @@
-#! user/bin/perl
+#!/usr/bin/perl -w
 ###############################################################################
 #
-#    fasta_header_rename.pl
+#    ortholog_list.pl
 #
-#	 Simplify the fasta header of each sequence record to create required input
-#    data file by PAML.
-#
+#	 Extract a list of single copy orthologous gene per genome based on the 
+#    .clstr file.
+#    
 #    Copyright (C) 2013 Zhuofei Xu
 #
 #    This program is free software: you can redistribute it and/or modify
@@ -20,7 +20,6 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.    
-#    
 #
 ###############################################################################
 
@@ -42,11 +41,11 @@ BEGIN {
 my $global_options = checkParams();
 
 my $inputfile;
-my $ingenomeid;
+my $genomenumber;
 my $outputfile;
 
-$inputfile = &overrideDefault("inputfile.fasta",'inputfile');
-$ingenomeid = &overrideDefault("genomeid",'ingenomeid');
+$inputfile = &overrideDefault("inputfile.clstr",'inputfile');
+$genomenumber = &overrideDefault("genome.number",'genomenumber');
 $outputfile = &overrideDefault("outputfile.txt",'outputfile');
  
 
@@ -55,26 +54,31 @@ $outputfile = &overrideDefault("outputfile.txt",'outputfile');
 # CODE
 ######################################################################
 
-	
 open (IN, "$inputfile") or die;
 open (OUT, ">$outputfile") or die;
 
-my $d = 0;
-my $new_d = 0000;
+my $count = 0;
+my @array = ();
 
 while (<IN>){
 	chomp;
-	if (/^>(.*)/){
-	    $d++;
-		$new_d = sprintf("%04d",$d);
-		print OUT ">$ingenomeid"."_$new_d\n";
-		
+	if (/^>Cluster/){
+	    if($count == $genomenumber){
+		  print OUT join("\t",@array), "\n";
+		  }
+		$count = 0;
+		@array = ();
 	}
-	else {
-	print OUT "$_\n";
-	}
+		if(/\s+>(\S+.*?)\.\.\./){
+		  push @array, $1;
+		  $count++;
+		}
 }
 close (IN);
+
+if($count == $genomenumber){
+   print OUT join("\t",@array), "\n";
+}
 
 ######################################################################
 # TEMPLATE SUBS
@@ -83,7 +87,7 @@ sub checkParams {
     #-----
     # Do any and all options checking here...
     #
-    my @standard_options = ( "help|h+", "inputfile|i:s", "ingenomeid|d:s", "outputfile|o:s");
+    my @standard_options = ( "help|h+", "inputfile|i:s", "genomenumber|t:s", "outputfile|o:s");
     my %options;
 
     # Add any other command line options, and the code to handle them
@@ -121,7 +125,7 @@ __DATA__
 
 =head1 NAME
 
-    fasta_header_rename.pl
+    ortholog_list.pl
 
 =head1 COPYRIGHT
 
@@ -142,16 +146,16 @@ __DATA__
 
 =head1 DESCRIPTION
 
-	Simplify the fasta header of each sequence record to create required input
-    data file by PAML.
+	Extract a list of single copy orthologous gene per genome based on the 
+    .clstr file.
 
 =head1 SYNOPSIS
 
-script.pl  -i -d -o [-h]
+script.pl  -i -t -o [-h]
 
  [-help -h]                 Displays this basic usage information
- [-inputfile -i]            Input fasta file 
- [-genome_identifier -d]    A short identifier instead of GenBank accession number
- [-outputfile -o]           Outputfile
+ [-inputfile -i]            Input .clstr file output by CD-HIT 
+ [-length_threshold -t]     The number of genomes used
+ [-outputfile -o]           A list of single copy orthologous gene per genome
  
 =cut

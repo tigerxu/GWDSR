@@ -1,11 +1,11 @@
-#! user/bin/perl
+#!/usr/bin/perl
 ###############################################################################
 #
-#    fasta_header_rename.pl
+#    extract_ortholog_cluster_seq.pl
 #
-#	 Simplify the fasta header of each sequence record to create required input
-#    data file by PAML.
-#
+#	 Extract the gene sequences of each orthologous group into individual
+#    file in FASTA format.
+#    
 #    Copyright (C) 2013 Zhuofei Xu
 #
 #    This program is free software: you can redistribute it and/or modify
@@ -19,8 +19,7 @@
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.    
-#    
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.  
 #
 ###############################################################################
 
@@ -42,12 +41,12 @@ BEGIN {
 my $global_options = checkParams();
 
 my $inputfile;
-my $ingenomeid;
-my $outputfile;
+my $orthologlist;
+my $outputdir;
 
-$inputfile = &overrideDefault("inputfile.fasta",'inputfile');
-$ingenomeid = &overrideDefault("genomeid",'ingenomeid');
-$outputfile = &overrideDefault("outputfile.txt",'outputfile');
+$inputfile = &overrideDefault("inputfile.clstr",'inputfile');
+$orthologlist = &overrideDefault("ortholog.list",'orthologlist');
+$outputdir = &overrideDefault("outputfile.dir",'outputdir');
  
 
 
@@ -55,26 +54,51 @@ $outputfile = &overrideDefault("outputfile.txt",'outputfile');
 # CODE
 ######################################################################
 
-	
-open (IN, "$inputfile") or die;
-open (OUT, ">$outputfile") or die;
+open (SEQ, "$inputfile") or die;
+
+local $/ = '>';
+my %hash = ();
+
+while(<SEQ>){
+	chomp;
+	my ($name, $sequence) = split (/\n/, $_, 2);
+	next unless ($name && $sequence);
+	my ($n) = $name =~ /^(\S+)/;
+	$sequence =~ s/\s+|\n|\-//g;
+	$hash{$n} = $sequence;
+}
+close(SEQ);
+
+open (LIST, "$orthologlist") or die;
+
+my $dir = "./"."$outputdir";
+
+system("mkdir $outputdir");
 
 my $d = 0;
-my $new_d = 0000;
+my $new_d = 0;
 
-while (<IN>){
+while(<LIST>){
 	chomp;
-	if (/^>(.*)/){
-	    $d++;
-		$new_d = sprintf("%04d",$d);
-		print OUT ">$ingenomeid"."_$new_d\n";
-		
-	}
-	else {
-	print OUT "$_\n";
-	}
+
+	my @array = split (/\n/, $_);
+	for my $ele (@array){
+       $d++;
+	   $new_d = sprintf("%04d",$d);	
+	   my @cluster = split (/\s+/, $ele);
+	   my $fna_file = "OG$new_d".".fa";
+
+		open (OUT, ">$dir/$fna_file") || die "cannot open $fna_file\n";
+		for my $ele (@cluster){
+		 if(exists $hash{$ele}){
+          print OUT ">$ele\n$hash{$ele}\n";
+		  }else{
+		  warn "error! The gene id is missing in the sequence file.\n";
+		  }
+    }		  
 }
-close (IN);
+}
+close(LIST);
 
 ######################################################################
 # TEMPLATE SUBS
@@ -83,7 +107,7 @@ sub checkParams {
     #-----
     # Do any and all options checking here...
     #
-    my @standard_options = ( "help|h+", "inputfile|i:s", "ingenomeid|d:s", "outputfile|o:s");
+    my @standard_options = ( "help|h+", "inputfile|i:s", "orthologlist|l:s", "outputdir|o:s");
     my %options;
 
     # Add any other command line options, and the code to handle them
@@ -121,7 +145,7 @@ __DATA__
 
 =head1 NAME
 
-    fasta_header_rename.pl
+    extract_ortholog_cluster_seq.pl
 
 =head1 COPYRIGHT
 
@@ -142,16 +166,18 @@ __DATA__
 
 =head1 DESCRIPTION
 
-	Simplify the fasta header of each sequence record to create required input
-    data file by PAML.
+	Extract the gene sequences of each orthologous group into individual
+    file in FASTA format.
 
 =head1 SYNOPSIS
 
-script.pl  -i -d -o [-h]
+script.pl  -i -l -o [-h]
 
  [-help -h]                 Displays this basic usage information
- [-inputfile -i]            Input fasta file 
- [-genome_identifier -d]    A short identifier instead of GenBank accession number
- [-outputfile -o]           Outputfile
+ [-inputfile -i]            Input fasta sequence file containing genes from all genomes 
+ [-orthologlist -l]         The list of gene identifiers of all othologous cluster
+ [-outputdir -o]            A directory of output fasta sequence files
  
 =cut
+
+

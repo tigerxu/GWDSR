@@ -1,11 +1,11 @@
-#! user/bin/perl
+#!/usr/bin/perl
 ###############################################################################
 #
-#    fasta_header_rename.pl
+#    parse_annotation_ncbiNR.pl
 #
-#	 Simplify the fasta header of each sequence record to create required input
-#    data file by PAML.
-#
+#	 Assign functional description of best NCBI NR hit to the query reference
+#    sequence of orthologous group.
+#    
 #    Copyright (C) 2013 Zhuofei Xu
 #
 #    This program is free software: you can redistribute it and/or modify
@@ -19,13 +19,13 @@
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.    
-#    
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.  
 #
 ###############################################################################
 
 use strict;
 use warnings;
+use Bio::SearchIO;
 
 #core Perl modules
 use Getopt::Long;
@@ -42,39 +42,52 @@ BEGIN {
 my $global_options = checkParams();
 
 my $inputfile;
-my $ingenomeid;
 my $outputfile;
 
-$inputfile = &overrideDefault("inputfile.fasta",'inputfile');
-$ingenomeid = &overrideDefault("genomeid",'ingenomeid');
-$outputfile = &overrideDefault("outputfile.txt",'outputfile');
- 
-
+$inputfile = &overrideDefault("inputfile.blast",'inputfile');
+$outputfile = &overrideDefault("outputfile.tab",'outputfile');
 
 ######################################################################
 # CODE
 ######################################################################
 
-	
-open (IN, "$inputfile") or die;
+my $in = Bio::SearchIO->new(-format => 'blast',
+                            -file    => $inputfile);
 open (OUT, ">$outputfile") or die;
+print OUT "OG_id\tFunction\n";
 
-my $d = 0;
-my $new_d = 0000;
+my $count = 0;
+my $number = 0;
 
-while (<IN>){
-	chomp;
-	if (/^>(.*)/){
-	    $d++;
-		$new_d = sprintf("%04d",$d);
-		print OUT ">$ingenomeid"."_$new_d\n";
-		
-	}
-	else {
-	print OUT "$_\n";
-	}
+while( my $r = $in->next_result ) {          #read a result
+  $count = 0;
+  $number++;
+  	if ($r->num_hits < 1){
+  	 print OUT $r->query_name,"\t","No hit\n";
+  	 next;
+  }
+  while( my $h = $r->next_hit ) {            #read a hit
+    my $hitlen = $h->length;
+    while( my $hsp = $h->next_hsp ) {
+     my $desc = $h->description;
+     if ($desc =~ /^(.*?)\s+\[(.*?)\]/){
+     	my $function = $1;
+     if ($count < 1){
+      print OUT $r->query_name,"\t", $function,"\n";
+     $count++;
+     }
+    }elsif ($desc =~ /^(.*)/){
+     	my $function = $1;
+     if ($count < 1){
+      print OUT $r->query_name,"\t", $function,"\n";
+     $count++;
+     }
+    }    
+    last;
+     }
+    last;	 
+  }
 }
-close (IN);
 
 ######################################################################
 # TEMPLATE SUBS
@@ -83,7 +96,7 @@ sub checkParams {
     #-----
     # Do any and all options checking here...
     #
-    my @standard_options = ( "help|h+", "inputfile|i:s", "ingenomeid|d:s", "outputfile|o:s");
+    my @standard_options = ( "help|h+", "inputfile|i:s", "outputfile|o:s");
     my %options;
 
     # Add any other command line options, and the code to handle them
@@ -121,7 +134,7 @@ __DATA__
 
 =head1 NAME
 
-    fasta_header_rename.pl
+   parse_annotation_ncbiNR.pl
 
 =head1 COPYRIGHT
 
@@ -142,16 +155,15 @@ __DATA__
 
 =head1 DESCRIPTION
 
-	Simplify the fasta header of each sequence record to create required input
-    data file by PAML.
+	Assign functional description of best NCBI NR hit to the query reference
+    sequence of orthologous group.
 
 =head1 SYNOPSIS
 
-script.pl  -i -d -o [-h]
+script.pl  -i -o [-h]
 
- [-help -h]                 Displays this basic usage information
- [-inputfile -i]            Input fasta file 
- [-genome_identifier -d]    A short identifier instead of GenBank accession number
- [-outputfile -o]           Outputfile
+ [-help -h]                Displays this basic usage information
+ [-inputfile -i]           BLAST output report as input file
+ [-outputfile -o]          Output file in the tabular form
  
 =cut

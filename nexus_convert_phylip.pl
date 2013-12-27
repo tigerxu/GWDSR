@@ -1,11 +1,11 @@
-#! user/bin/perl
+#!/usr/bin/perl
 ###############################################################################
 #
-#    fasta_header_rename.pl
+#    nexus_convert_phylip.pl
 #
-#	 Simplify the fasta header of each sequence record to create required input
-#    data file by PAML.
-#
+#	 Convert all the nexus-format alignments into phylip-format within the same
+#    directory.
+#    
 #    Copyright (C) 2013 Zhuofei Xu
 #
 #    This program is free software: you can redistribute it and/or modify
@@ -19,13 +19,13 @@
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.    
-#    
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>. 
 #
 ###############################################################################
 
 use strict;
 use warnings;
+use Bio::AlignIO;
 
 #core Perl modules
 use Getopt::Long;
@@ -41,40 +41,76 @@ BEGIN {
 # get input params
 my $global_options = checkParams();
 
-my $inputfile;
-my $ingenomeid;
-my $outputfile;
+my $inputdir;
 
-$inputfile = &overrideDefault("inputfile.fasta",'inputfile');
-$ingenomeid = &overrideDefault("genomeid",'ingenomeid');
-$outputfile = &overrideDefault("outputfile.txt",'outputfile');
- 
-
+$inputdir = &overrideDefault("inputfile.dir",'inputdir');
 
 ######################################################################
 # CODE
 ######################################################################
 
+my $dir = "./"."$inputdir";
+opendir(DIR, $dir) || die "Can't open directory $dir\n";
+my @store_array = ();
+@store_array = readdir(DIR);
+
+my $name = '';
+
+foreach my $file (@store_array) {
+	next unless ($file =~ /^\S+_finalout$/);
+	if ($file =~ /^(.*?)\./){
+		$name = $1;
+	}
+	my $seqno = 0;
+    my $seqlen = 0;
+    my @taxid = ();
+    my @align = ();
+	my $sequence = '';
+	my $seqname = '';
+    my %hash = ();
 	
-open (IN, "$inputfile") or die;
-open (OUT, ">$outputfile") or die;
-
-my $d = 0;
-my $new_d = 0000;
-
-while (<IN>){
-	chomp;
-	if (/^>(.*)/){
-	    $d++;
-		$new_d = sprintf("%04d",$d);
-		print OUT ">$ingenomeid"."_$new_d\n";
-		
+  open (IN, "$dir/$file") || die "can't open file:$!\n";
+  while(<IN>){
+     chomp;
+	 if(/\s+DIMENSIONS NTAX = (\d+)/){
+	    $seqno = $1;
+	}elsif(/\s+DIMENSIONS NCHAR = (\d+)/){
+	    $seqlen = $1;
 	}
-	else {
-	print OUT "$_\n";
-	}
+	if($_ =~ /'/){
+	   $_ =~ s/'//g;
+       $_ =~ s/^\s+//g;
+	   $_ =~ s/\s*;$//g;
+	   #warn "$_\n";
+	   @taxid = split(/\s+/,$_);
+	   }
+	if(/^ (\S+)$/){
+	  $sequence = $1;
+	  $sequence =~ s/;$//;
+	  push @align, $sequence;
+	  }
+	 #	CHARSET span_1 = 1-1101;
+	 if(/^\s+CHARSET span_(\d+) = (\d+)-(\d+)/){
+	   push @{$hash{$1}}, $2, $3;
+	   }
+  }
+	 for my $ele (keys %hash){
+	   open (OUT, ">$dir/$name\_$ele.phylip") || die "can't open file:outfile\n";
+	   my $partition = $hash{$ele}[1]-$hash{$ele}[0]+1;
+	   my $partition2 = (int($partition/3))*3;
+	   print OUT " $seqno $partition2\n";
+	   for (my $i = 0; $i < @taxid; $i++){
+	     $seqname = sprintf("%-20s", $taxid[$i]);
+		 if(($hash{$ele}[0] % 3) == 1){
+		 print OUT "$seqname", substr($align[$i], ($hash{$ele}[0]-1), $partition2), "\n";
+		 }elsif(($hash{$ele}[0] % 3) == 2){
+		 print OUT "$seqname", substr($align[$i], ($hash{$ele}[0]-1+2), $partition2), "\n";
+		 }elsif(($hash{$ele}[0] % 3) == 0){
+		 print OUT "$seqname", substr($align[$i], ($hash{$ele}[0]-1+1), $partition2), "\n";
+		 }
+		 }
 }
-close (IN);
+}
 
 ######################################################################
 # TEMPLATE SUBS
@@ -83,7 +119,7 @@ sub checkParams {
     #-----
     # Do any and all options checking here...
     #
-    my @standard_options = ( "help|h+", "inputfile|i:s", "ingenomeid|d:s", "outputfile|o:s");
+    my @standard_options = ( "help|h+", "inputdir|i:s");
     my %options;
 
     # Add any other command line options, and the code to handle them
@@ -121,7 +157,7 @@ __DATA__
 
 =head1 NAME
 
-    fasta_header_rename.pl
+    nexus_convert_phylip.pl
 
 =head1 COPYRIGHT
 
@@ -142,16 +178,14 @@ __DATA__
 
 =head1 DESCRIPTION
 
-	Simplify the fasta header of each sequence record to create required input
-    data file by PAML.
+	Convert all the nexus-format alignments into phylip-format within the same
+    directory.
 
 =head1 SYNOPSIS
 
-script.pl  -i -d -o [-h]
+script.pl  -i [-h]
 
- [-help -h]                 Displays this basic usage information
- [-inputfile -i]            Input fasta file 
- [-genome_identifier -d]    A short identifier instead of GenBank accession number
- [-outputfile -o]           Outputfile
+ [-help -h]                Displays this basic usage information
+ [-inputdir -i]            Input directory containing raw alignment file to be tested 
  
 =cut

@@ -1,11 +1,10 @@
-#! user/bin/perl
+#! /usr/bin/perl
 ###############################################################################
 #
-#    fasta_header_rename.pl
+#    runPhyML.pl
 #
-#	 Simplify the fasta header of each sequence record to create required input
-#    data file by PAML.
-#
+#	 Reconstruct a maximum likelihood tree for each gene alignment using PhyML.
+#    
 #    Copyright (C) 2013 Zhuofei Xu
 #
 #    This program is free software: you can redistribute it and/or modify
@@ -19,11 +18,12 @@
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.    
-#    
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.  
 #
 ###############################################################################
 
+use Bio::AlignIO;
+use Bio::TreeIO;
 use strict;
 use warnings;
 
@@ -41,40 +41,55 @@ BEGIN {
 # get input params
 my $global_options = checkParams();
 
-my $inputfile;
-my $ingenomeid;
-my $outputfile;
+my $inputdir;
+my $outputdir;
 
-$inputfile = &overrideDefault("inputfile.fasta",'inputfile');
-$ingenomeid = &overrideDefault("genomeid",'ingenomeid');
-$outputfile = &overrideDefault("outputfile.txt",'outputfile');
- 
+$inputdir = &overrideDefault("inputfile.dir",'inputdir');
+$outputdir = &overrideDefault("outputfile.dir",'outputdir');
 
+system("mkdir $outputdir"); 
 
 ######################################################################
 # CODE
 ######################################################################
 
-	
-open (IN, "$inputfile") or die;
-open (OUT, ">$outputfile") or die;
+opendir(DIR, "$inputdir") or die;
+my @array = ();
+@array = readdir(DIR);
 
-my $d = 0;
-my $new_d = 0000;
-
-while (<IN>){
-	chomp;
-	if (/^>(.*)/){
-	    $d++;
-		$new_d = sprintf("%04d",$d);
-		print OUT ">$ingenomeid"."_$new_d\n";
-		
-	}
-	else {
-	print OUT "$_\n";
-	}
+foreach my $file (@array){
+	next unless ($file =~ /^\S+.phylip$/);
+	#my $out_file = $file . ".align";		
+	system ("phyml -i $inputdir/$file -d nt 每q sequential 每m GTR 每f m 每t e 每v e 每c 4");       #-d data_type;  
+	                                                                                      #-m HKY85| K80 | F81 | GTR | custom (nucleotide-based model)  substitution model
+	                                                                                      #-f m : nucleotide sequences: the equilibrium base frequencies are estimated using maximum likelihood
+	                                                                                      #-t e: get the maximum likelihood estimate. -t ts/tv_ratio (transition/transversion ratio)
+	                                                                                      #-v e: get the maximum likelihood estimate for the proportion of invariable sites.
+	                                                                                      #-a gamma: gamma is the value of the gamma shape parameter that is estimated in the maximum likelihood framwork.
+	                                                                                      #-c nb_subst_cat: number of relative substituion rate categories.
+	                                                                                      #-b int: default is SH-like brance supports alone	
+	                                                                                      #-b 0: don't compute branch support                                                                                     
 }
-close (IN);
+closedir (DIR);
+
+my $sym = '';
+opendir(DIR, "$inputdir") or die;
+
+@array = readdir(DIR);
+
+foreach my $ele (@array){
+	next unless ($ele =~ /_phyml_tree.txt$/);
+	($sym) = $ele =~ /^(\S+)_phyml_tree.txt$/;
+	#warn "$sym\n";
+	open (FH, "$inputdir/$ele")|| die "can't open file:$!\n";
+	open (OUT, ">$outputdir/$sym.tree") || die "can't open file:outfile\n";
+	while (<FH>){
+		chomp;
+	$_ =~ s/\)(\d+\.\d+):/\):/g;                                                     #
+	print OUT "$_\n";
+}
+}
+closedir (DIR);
 
 ######################################################################
 # TEMPLATE SUBS
@@ -83,7 +98,7 @@ sub checkParams {
     #-----
     # Do any and all options checking here...
     #
-    my @standard_options = ( "help|h+", "inputfile|i:s", "ingenomeid|d:s", "outputfile|o:s");
+    my @standard_options = ( "help|h+", "inputdir|i:s", "outputdir|o:s");
     my %options;
 
     # Add any other command line options, and the code to handle them
@@ -121,7 +136,7 @@ __DATA__
 
 =head1 NAME
 
-    fasta_header_rename.pl
+    runPhyML.pl
 
 =head1 COPYRIGHT
 
@@ -142,16 +157,14 @@ __DATA__
 
 =head1 DESCRIPTION
 
-	Simplify the fasta header of each sequence record to create required input
-    data file by PAML.
+	Reconstruct a maximum likelihood tree for each gene alignment using PhyML.
 
 =head1 SYNOPSIS
 
-script.pl  -i -d -o [-h]
+script.pl -i -o [-h]
 
- [-help -h]                 Displays this basic usage information
- [-inputfile -i]            Input fasta file 
- [-genome_identifier -d]    A short identifier instead of GenBank accession number
- [-outputfile -o]           Outputfile
+ [-help -h]                Displays this basic usage information
+ [-inputdir -i]            Input directory containing codon alignments in phylip format
+ [-outputdir -o]           Output directory 
  
 =cut

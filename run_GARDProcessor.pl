@@ -1,11 +1,11 @@
-#! user/bin/perl
+#! /usr/bin/perl
 ###############################################################################
 #
-#    fasta_header_rename.pl
+#    run_GARDProcessor.pl
 #
-#	 Simplify the fasta header of each sequence record to create required input
-#    data file by PAML.
-#
+#	 Run a GARDProcessor analysis to confirm that the topologies differ between
+#    segments and the significant recombination breakpoints.
+#    
 #    Copyright (C) 2013 Zhuofei Xu
 #
 #    This program is free software: you can redistribute it and/or modify
@@ -19,8 +19,8 @@
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.    
-#    
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>. 
+#
 #
 ###############################################################################
 
@@ -41,40 +41,40 @@ BEGIN {
 # get input params
 my $global_options = checkParams();
 
-my $inputfile;
-my $ingenomeid;
-my $outputfile;
+my $inputdir;
+my $templatefile;
+my $path;
 
-$inputfile = &overrideDefault("inputfile.fasta",'inputfile');
-$ingenomeid = &overrideDefault("genomeid",'ingenomeid');
-$outputfile = &overrideDefault("outputfile.txt",'outputfile');
- 
-
+$inputdir = &overrideDefault("inputfile.dir",'inputdir');
+$templatefile = &overrideDefault("template.bf",'templatefile');
+$path = &overrideDefault("wd.path",'path');
 
 ######################################################################
 # CODE
 ######################################################################
 
-	
-open (IN, "$inputfile") or die;
-open (OUT, ">$outputfile") or die;
+my %count = ();
+opendir(DIR, $inputdir) || die "Can't open directory $inputdir\n";
+my @store_array = ();
+@store_array = readdir(DIR);
+my $name = '';
 
-my $d = 0;
-my $new_d = 0000;
-
-while (<IN>){
-	chomp;
-	if (/^>(.*)/){
-	    $d++;
-		$new_d = sprintf("%04d",$d);
-		print OUT ">$ingenomeid"."_$new_d\n";
-		
+foreach my $file (@store_array) {
+	next unless ($file =~ /^\S+\.aln$/);
+	if ($file =~ /^(\S+\.aln)$/){
+		$name = $1;
 	}
-	else {
-	print OUT "$_\n";
-	}
+  open (IN, "$templatefile") or die;
+  open (OUT, ">$inputdir/runGARDPro.$name.bf") or die;
+  my $fullpath = $path.'/'.$inputdir.'/'.$file;
+  while(<IN>){
+   chomp;
+   $_ =~ s/full path to the original alignment file/$fullpath/;
+   $_ =~ s/full path to the output file with extension _splits/$fullpath.html_splits/;
+   print OUT "$_\n";
+  }
+  system("HYPHYMPI $inputdir/runGARDPro.$name.bf > $inputdir/$name.SH.txt");
 }
-close (IN);
 
 ######################################################################
 # TEMPLATE SUBS
@@ -83,7 +83,7 @@ sub checkParams {
     #-----
     # Do any and all options checking here...
     #
-    my @standard_options = ( "help|h+", "inputfile|i:s", "ingenomeid|d:s", "outputfile|o:s");
+    my @standard_options = ( "help|h+", "inputdir|i:s", "templatefile|t:s", "path|p:s");
     my %options;
 
     # Add any other command line options, and the code to handle them
@@ -121,7 +121,7 @@ __DATA__
 
 =head1 NAME
 
-    fasta_header_rename.pl
+    run_GARDProcessor.pl
 
 =head1 COPYRIGHT
 
@@ -142,16 +142,17 @@ __DATA__
 
 =head1 DESCRIPTION
 
-	Simplify the fasta header of each sequence record to create required input
-    data file by PAML.
+	Run a GARDProcessor analysis to confirm that the topologies differ between
+    segments and the significant recombination breakpoints.
 
 =head1 SYNOPSIS
 
-script.pl  -i -d -o [-h]
+script.pl  -i -t -p [-h]
 
- [-help -h]                 Displays this basic usage information
- [-inputfile -i]            Input fasta file 
- [-genome_identifier -d]    A short identifier instead of GenBank accession number
- [-outputfile -o]           Outputfile
- 
+ [-help -h]                Displays this basic usage information
+ [-inputdir -i]            Input directory containing raw alignment file to be tested 
+ [-templatefile -t]        Batch file as template to create input by running GARDProcessor
+ [-path -p]                The current working directory prompted by pwd
 =cut
+
+

@@ -1,11 +1,13 @@
-#! user/bin/perl
+#! /usr/bin/perl
 ###############################################################################
 #
-#    fasta_header_rename.pl
+#    run_codeml_M2.pl
 #
-#	 Simplify the fasta header of each sequence record to create required input
-#    data file by PAML.
+#    Copyright (C) 2013 Zhuofei Xu
 #
+#	 Run an alternative selection model M2a using the codeml program on many 
+#    coding genes.
+#    
 #    Copyright (C) 2013 Zhuofei Xu
 #
 #    This program is free software: you can redistribute it and/or modify
@@ -19,8 +21,7 @@
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.    
-#    
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>. 
 #
 ###############################################################################
 
@@ -41,40 +42,65 @@ BEGIN {
 # get input params
 my $global_options = checkParams();
 
-my $inputfile;
-my $ingenomeid;
-my $outputfile;
+my $seqdir;
+my $treedir;
+my $outputdir;
 
-$inputfile = &overrideDefault("inputfile.fasta",'inputfile');
-$ingenomeid = &overrideDefault("genomeid",'ingenomeid');
-$outputfile = &overrideDefault("outputfile.txt",'outputfile');
- 
-
+$seqdir = &overrideDefault("alignment.dir",'seqdir');
+$treedir = &overrideDefault("tree.dir",'treedir');
+$outputdir = &overrideDefault("M2a.dir",'outputdir');
 
 ######################################################################
 # CODE
 ######################################################################
 
+ system("mkdir $outputdir"); 
+ 
+#==============================================================
+
+my %count = ();
+opendir(DIR, $seqdir) or die;
+my @store_array = ();
+@store_array = readdir(DIR);
+my $name = '';
+
+foreach my $file (@store_array) {
+	next unless ($file =~ /^\S+\.phylip$/);
+	if ($file =~ /^(\S+)\.phylip$/){
+		$name = $1;
+	}
 	
-open (IN, "$inputfile") or die;
-open (OUT, ">$outputfile") or die;
+  open (OUT, ">$name.M2.ctl")|| die "can't open contral file:$!\n";
 
-my $d = 0;
-my $new_d = 0000;
+  print OUT "seqfile           = $seqdir/$name.phylip\n",
+            "treefile          = $treedir/$name.phylip.tree\n",
+            "outfile           = $outputdir/$name.M2\n",
+            "noisy             = 0\n",
+            "verbose           = 1\n",
+            "runmode           = 0\n",
+            "seqtype           = 1\n",
+            "CodonFreq         = 2\n",
+            "aaDist            = 0\n",
+            "model             = 0\n",
+            "NSsites           = 2\n",                         #modify this parameter
+            "icode             = 0\n",
+            "fix_kappa         = 0\n",
+            "kappa             = 0\n",
+            "fix_omega         = 0\n",
+            "omega             = 1\n",
+            "fix_alpha         = 1\n",
+            "alpha             = 0\n",
+            "Malpha            = 0\n",
+            "ncatG             = 10\n",
+            "clock             = 0\n",
+            "getSE             = 0\n",
+            "RateAncestor      = 0\n",
+            "Small_Diff        = .5e-6\n",
+            "cleandata         = 1\n";
 
-while (<IN>){
-	chomp;
-	if (/^>(.*)/){
-	    $d++;
-		$new_d = sprintf("%04d",$d);
-		print OUT ">$ingenomeid"."_$new_d\n";
-		
-	}
-	else {
-	print OUT "$_\n";
-	}
+  system("codeml $name.M2.ctl");
 }
-close (IN);
+#==============================================================
 
 ######################################################################
 # TEMPLATE SUBS
@@ -83,7 +109,7 @@ sub checkParams {
     #-----
     # Do any and all options checking here...
     #
-    my @standard_options = ( "help|h+", "inputfile|i:s", "ingenomeid|d:s", "outputfile|o:s");
+    my @standard_options = ( "help|h+", "seqdir|s:s", "treedir|t:s", "outputdir|o:s");
     my %options;
 
     # Add any other command line options, and the code to handle them
@@ -121,7 +147,7 @@ __DATA__
 
 =head1 NAME
 
-    fasta_header_rename.pl
+   run_codeml_M2.pl
 
 =head1 COPYRIGHT
 
@@ -142,16 +168,15 @@ __DATA__
 
 =head1 DESCRIPTION
 
-	Simplify the fasta header of each sequence record to create required input
-    data file by PAML.
+	Run an alternative selection model M2a using the codeml program on many coding
+    genes.
 
 =head1 SYNOPSIS
 
-script.pl  -i -d -o [-h]
+script.pl  -i -t -p [-h]
 
- [-help -h]                 Displays this basic usage information
- [-inputfile -i]            Input fasta file 
- [-genome_identifier -d]    A short identifier instead of GenBank accession number
- [-outputfile -o]           Outputfile
- 
+ [-help -h]              Displays this basic usage information
+ [-seqdir -s]            Input directory containing non-recombinant alignments 
+ [-treedir -t]           Input directory containing ML tree
+ [-outputdir -o]         Output directory
 =cut

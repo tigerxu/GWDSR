@@ -1,11 +1,11 @@
-#! user/bin/perl
+#!/usr/bin/perl
 ###############################################################################
 #
-#    fasta_header_rename.pl
+#    run_pal2nal.pl
 #
-#	 Simplify the fasta header of each sequence record to create required input
-#    data file by PAML.
-#
+#	 Convert multiple sequence alignments of proteins and the corresponding DNA
+#    (or mRNA) sequences into a codon-based DNA alignment.
+#    
 #    Copyright (C) 2013 Zhuofei Xu
 #
 #    This program is free software: you can redistribute it and/or modify
@@ -19,8 +19,7 @@
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.    
-#    
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.  
 #
 ###############################################################################
 
@@ -41,41 +40,39 @@ BEGIN {
 # get input params
 my $global_options = checkParams();
 
-my $inputfile;
-my $ingenomeid;
-my $outputfile;
+my $inputproteindir;
+my $inputdnadir;
+my $outputdir;
 
-$inputfile = &overrideDefault("inputfile.fasta",'inputfile');
-$ingenomeid = &overrideDefault("genomeid",'ingenomeid');
-$outputfile = &overrideDefault("outputfile.txt",'outputfile');
- 
-
+$inputproteindir = &overrideDefault("inputdir.aln",'inputproteindir');
+$inputdnadir = &overrideDefault("inputdir.dna",'inputdnadir');
+$outputdir = &overrideDefault("outputdir.codon",'outputdir');
 
 ######################################################################
 # CODE
 ######################################################################
 
-	
-open (IN, "$inputfile") or die;
-open (OUT, ">$outputfile") or die;
+use Bio::AlignIO;
+use Bio::SeqIO;
+use Bio::Align::Utilities qw(aa_to_dna_aln);
 
-my $d = 0;
-my $new_d = 0000;
+ system("mkdir $outputdir"); 
 
-while (<IN>){
-	chomp;
-	if (/^>(.*)/){
-	    $d++;
-		$new_d = sprintf("%04d",$d);
-		print OUT ">$ingenomeid"."_$new_d\n";
-		
+my %count = ();
+opendir(DIR, $inputproteindir) || die "Can't open directory\n";
+my @store_array = ();
+@store_array = readdir(DIR);
+my $name = '';
+
+foreach my $file (@store_array) {
+	next unless ($file =~ /^\S+\.aln$/);
+	if ($file =~ /^(\S+)\.aln$/){
+		$name = $1;
 	}
-	else {
-	print OUT "$_\n";
-	}
+
+  system("perl pal2nal.pl $inputproteindir/$file $inputdnadir/$name.fa -output fasta > $outputdir/$name.codon.aln")
 }
-close (IN);
-
+ 
 ######################################################################
 # TEMPLATE SUBS
 ######################################################################
@@ -83,7 +80,7 @@ sub checkParams {
     #-----
     # Do any and all options checking here...
     #
-    my @standard_options = ( "help|h+", "inputfile|i:s", "ingenomeid|d:s", "outputfile|o:s");
+    my @standard_options = ( "help|h+", "inputproteindir|p:s", "inputdnadir|d:s", "outputdir|c:s");
     my %options;
 
     # Add any other command line options, and the code to handle them
@@ -121,7 +118,7 @@ __DATA__
 
 =head1 NAME
 
-    fasta_header_rename.pl
+    run_pal2nal.pl
 
 =head1 COPYRIGHT
 
@@ -142,16 +139,16 @@ __DATA__
 
 =head1 DESCRIPTION
 
-	Simplify the fasta header of each sequence record to create required input
-    data file by PAML.
+	Convert multiple sequence alignments of proteins and the corresponding DNA
+    (or mRNA) sequences into a codon-based DNA alignment.
 
 =head1 SYNOPSIS
 
-script.pl  -i -d -o [-h]
+script.pl  -p -d -c [-h]
 
  [-help -h]                 Displays this basic usage information
- [-inputfile -i]            Input fasta file 
- [-genome_identifier -d]    A short identifier instead of GenBank accession number
- [-outputfile -o]           Outputfile
+ [-inputproteindir -p]      Input directory containing multiple sequence alignments of proteins 
+ [-inputdnadir -d]          Input directory containing the corresponding DNA sequences
+ [-outputdir -c]            A directory of output codon-based alignments
  
 =cut
