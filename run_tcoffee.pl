@@ -3,7 +3,7 @@
 #
 #    run_tcoffee.pl
 #
-#	 Batch run Multiple sequence alignment using T_Coffee.
+#	 Run Multiple sequence alignment using T_Coffee in batch mode.
 #    
 #    Copyright (C) 2013 Zhuofei Xu
 #
@@ -124,7 +124,7 @@ __DATA__
 
 =head1 DESCRIPTION
 
-	Batch run Multiple sequence alignment using T_Coffee.
+	Run Multiple sequence alignment using T_Coffee in batch mode.
 
 =head1 SYNOPSIS
 

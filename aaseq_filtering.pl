@@ -3,7 +3,7 @@
 #
 #    aaseq_filtering.pl
 #
-#	 Extract the fasta sequence more than 150 nt and remove the stop codon per
+#	 Extract the fasta sequence more than 50 aa and remove the stop codon per
 #    ORF.
 #    
 #    Copyright (C) 2013 Zhuofei Xu
@@ -112,7 +112,7 @@ __DATA__
 
 =head1 NAME
 
-    seq_filtering.pl
+    aaseq_filtering.pl
 
 =head1 COPYRIGHT
 
@@ -133,7 +133,7 @@ __DATA__
 
 =head1 DESCRIPTION
 
-	Extract the fasta sequence more than 150 nt and remove the stop codon per
+	Extract the fasta sequence more than 50 aa and remove the stop codon per
     ORF.
 
 =head1 SYNOPSIS

@@ -1,10 +1,9 @@
-#!/usr/bin/perl -w
+ #!/usr/bin/perl
 ###############################################################################
 #
-#    ortholog_list.pl
+#    parse_codeml_M1a.pl
 #
-#	 Extract a list of single copy orthologous gene per genome based on the 
-#    .clstr file.
+#	 Parse information from the output based on the model M1a.
 #    
 #    Copyright (C) 2013 Zhuofei Xu
 #
@@ -19,7 +18,7 @@
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.    
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.  
 #
 ###############################################################################
 
@@ -40,44 +39,58 @@ BEGIN {
 # get input params
 my $global_options = checkParams();
 
-my $inputfile;
-my $genomenumber;
+my $inputdir;
 my $outputfile;
 
-$inputfile = &overrideDefault("inputfile.clstr",'inputfile');
-$genomenumber = &overrideDefault("genome.number",'genomenumber');
+$inputdir = &overrideDefault("inputfile.dir",'inputdir');
 $outputfile = &overrideDefault("outputfile.txt",'outputfile');
- 
-
 
 ######################################################################
 # CODE
 ######################################################################
 
-open (IN, "$inputfile") or die;
-open (OUT, ">$outputfile") or die;
+  use Bio::Tools::Phylo::PAML;
+  use Bio::Tools::Phylo::PAML::Result;
+  use Bio::Tools::Phylo::PAML::ModelResult;
+  use Bio::Seq;
+  use Bio::SeqIO;
+  use Bio::PrimarySeq;
 
-my $count = 0;
+  open (OUT, ">$outputfile") or die;
+	
+  print OUT "OG_ID\tLikelihood (M1a)";       #extract model1a results
+
+  opendir(DIR, $inputdir) or die;
+
+  
+my @store_array = ();
+@store_array = readdir(DIR);
+my $name = '';
 my @array = ();
 
-while (<IN>){
-	chomp;
-	if (/^>Cluster/){
-	    if($count == $genomenumber){
-		  print OUT join("\t",@array), "\n";
-		  }
-		$count = 0;
-		@array = ();
-	}
-		if(/\s+>(\S+.*?)\.\.\./){
-		  push @array, $1;
-		  $count++;
-		}
-}
-close (IN);
+foreach my $file (@store_array) {
+	@array = ();
+ 	next unless ($file =~ /^(\S+)\.M1/);
+ 	if ($file =~ /^(\S+)\.M1/){
+		$name = $1;
+	} 
+  print OUT "\n$name\t";
+  my $outcodeml = "$inputdir/$file";
+  my $parser = Bio::Tools::Phylo::PAML->new(-file => $outcodeml);
+  my $result = $parser->next_result();
 
-if($count == $genomenumber){
-   print OUT join("\t",@array), "\n";
+  for my $modelresult ( $result->get_NSSite_results ) {
+
+  print OUT $modelresult->likelihood, "\t";
+  
+  foreach my $model ( $result->get_NSSite_results ) {
+    	for my $sites ( $model->get_BEB_pos_selected_sites ) {
+    		    if (@$sites[3] cmp ''){
+              push (@array, @$sites[0]);
+           }
+    		  }print OUT join(', ', @array), "\t";
+    		}
+  }
 }
 
 ######################################################################
@@ -87,7 +100,7 @@ sub checkParams {
     #-----
     # Do any and all options checking here...
     #
-    my @standard_options = ( "help|h+", "inputfile|i:s", "genomenumber|t:s", "outputfile|o:s");
+    my @standard_options = ( "help|h+", "inputdir|i:s", "outputfile|o:s");
     my %options;
 
     # Add any other command line options, and the code to handle them
@@ -125,7 +138,7 @@ __DATA__
 
 =head1 NAME
 
-    ortholog_list.pl
+    parse_codeml_M1a.pl
 
 =head1 COPYRIGHT
 
@@ -146,16 +159,14 @@ __DATA__
 
 =head1 DESCRIPTION
 
-	Extract a list of single copy orthologous gene per genome based on the 
-    .clstr file.
+	Parse information from the output based on the model M1a.
 
 =head1 SYNOPSIS
 
-script.pl  -i -t -o [-h]
+script.pl -i -o [-h]
 
- [-help -h]                 Displays this basic usage information
- [-inputfile -i]            Input .clstr file output by CD-HIT 
- [-genome_number -t]        The number of genomes used
- [-outputfile -o]           A list of single copy orthologous gene per genome
+ [-help -h]                Displays this basic usage information
+ [-inputdir -i]            Input directory containing the output of M1a
+ [-outputfile -o]          Output file
  
 =cut
