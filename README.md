@@ -1,7 +1,6 @@
 GWDSR: Genome-Wide Detection of Selection and Recombination
 Version 1.0beta, Mar 2014
 
-Author: Zhuofei Xu
 Software implemented by Zhuofei Xu
 
 Copyright (c) (2013-2014) 
