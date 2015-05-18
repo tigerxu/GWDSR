@@ -6,7 +6,7 @@
 #	 Extract a list of single copy orthologous gene per genome based on the 
 #    .clstr file.
 #    
-#    Copyright (C) 2013 Zhuofei Xu
+#    Copyright (C) 2015 Zhuofei Xu
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -59,26 +59,45 @@ open (OUT, ">$outputfile") or die;
 
 my $count = 0;
 my @array = ();
+my %hash = ();
+my $locustag = '';
+my $strainame = '';
+my $geneno = 0;
 
 while (<IN>){
 	chomp;
 	if (/^>Cluster/){
-	    if($count == $genomenumber){
+	  foreach my $flag (keys %hash){
+       $count++;
+	   }
+	   $geneno = scalar @array;
+	    if(($count == $genomenumber) && ($geneno == $genomenumber)){
 		  print OUT join("\t",@array), "\n";
 		  }
 		$count = 0;
+		$geneno = 0;
 		@array = ();
+		%hash = ();
 	}
 		if(/\s+>(\S+.*?)\.\.\./){
-		  push @array, $1;
-		  $count++;
+		  $locustag = $1;
+		  push @array, $locustag;
+		  if($locustag =~ /(\S+)_\d+/){
+		   $strainame = $1;
+		   $hash{$strainame}++;
+		  #$count++;
+		  }
 		}
 }
 close (IN);
 
-if($count == $genomenumber){
-   print OUT join("\t",@array), "\n";
-}
+	foreach my $flag (keys %hash){
+       $count++;
+	   }
+	   	$geneno = scalar @array;
+	    if(($count == $genomenumber) && ($geneno = $genomenumber)){
+		  print OUT join("\t",@array), "\n";
+		  }
 
 ######################################################################
 # TEMPLATE SUBS
@@ -129,7 +148,7 @@ __DATA__
 
 =head1 COPYRIGHT
 
-   Copyright (C) 2013 Zhuofei Xu
+   Copyright (C) 2015 Zhuofei Xu
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
