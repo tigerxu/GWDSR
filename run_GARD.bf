@@ -1,8 +1,9 @@
 fileToExe = HYPHY_LIB_DIRECTORY + "TemplateBatchFiles" + DIRECTORY_SEPARATOR + "GARD.bf";
  
 /* a  list of file paths */
+
 SetDialogPrompt ( "Provide a list of files to process:" );
-fscanf ( PROMPT_FOR_FILE, "Lines", _inDirectoryPaths );
+fscanf ("input_path.txt", "Lines", _inDirectoryPaths );
  
 fprintf (stdout, "[READ ", Columns (_inDirectoryPaths), " file path lines]\n");
  
