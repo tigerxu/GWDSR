@@ -5,7 +5,7 @@
 #
 #	 Parse information from the output based on the model M1a.
 #    
-#    Copyright (C) 2013 Zhuofei Xu
+#    Copyright (C) 2015 Zhuofei Xu
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -49,17 +49,11 @@ $outputfile = &overrideDefault("outputfile.txt",'outputfile');
 # CODE
 ######################################################################
 
-  use Bio::Tools::Phylo::PAML;
-  use Bio::Tools::Phylo::PAML::Result;
-  use Bio::Tools::Phylo::PAML::ModelResult;
-  use Bio::Seq;
-  use Bio::SeqIO;
-  use Bio::PrimarySeq;
-
   open (OUT, ">$outputfile") or die;
 	
   print OUT "OG_ID\tLikelihood (M1a)";       #extract model1a results
-
+# lnL(ntime: 21  np: 24):  -1587.359539      +0.000000
+# lnL(ntime: 43  np: 46):  -6326.833436      +0.000000
   opendir(DIR, $inputdir) or die;
 
   
@@ -76,20 +70,13 @@ foreach my $file (@store_array) {
 	} 
   print OUT "\n$name\t";
   my $outcodeml = "$inputdir/$file";
-  my $parser = Bio::Tools::Phylo::PAML->new(-file => $outcodeml);
-  my $result = $parser->next_result();
-
-  for my $modelresult ( $result->get_NSSite_results ) {
-
-  print OUT $modelresult->likelihood, "\t";
   
-  foreach my $model ( $result->get_NSSite_results ) {
-    	for my $sites ( $model->get_BEB_pos_selected_sites ) {
-    		    if (@$sites[3] cmp ''){
-              push (@array, @$sites[0]);
-           }
-    		  }print OUT join(', ', @array), "\t";
-    		}
+  open (DATA, $outcodeml) or die;
+  while(<DATA>){
+    chomp;
+	if(/^lnL\(ntime:.*\):\s+(\S+)\s+/){
+	  print OUT "$1\t";
+	  }
   }
 }
 
@@ -142,7 +129,7 @@ __DATA__
 
 =head1 COPYRIGHT
 
-   Copyright (C) 2013 Zhuofei Xu
+   Copyright (C) 2015 Zhuofei Xu
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
