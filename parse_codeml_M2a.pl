@@ -5,7 +5,7 @@
 #
 #	 Parse information from the output based on the model M2a.
 #    
-#    Copyright (C) 2013 Zhuofei Xu
+#    Copyright (C) 2015 Zhuofei Xu
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -49,22 +49,19 @@ $outputfile = &overrideDefault("outputfile.txt",'outputfile');
 # CODE
 ######################################################################
 
-  use Bio::Tools::Phylo::PAML;
-  use Bio::Tools::Phylo::PAML::Result;
-  use Bio::Tools::Phylo::PAML::ModelResult;
-  use Bio::Seq;
-  use Bio::SeqIO;
-  use Bio::PrimarySeq;
-
   open (OUT, ">$outputfile") or die;
   print OUT "OG_ID\tLikelihood (M2a)\tp2\tw2\tPositively selected sites";       #extract model1a results
-
+#p:   0.91144  0.00000  0.08856
+#w:   0.12809  1.00000  8.63103
+#Bayes Empirical Bayes (BEB) analysis (Yang, Wong & Nielsen 2005. Mol. Biol. Evol. 22:1107-1118)
+#   327 S      0.984*        8.190 +- 2.035
   opendir(DIR, $inputdir) or die;
   
 my @store_array = ();
 @store_array = readdir(DIR);
 my $name = '';
 my @array = ();
+my $flag = 0;
 
 foreach my $file (@store_array) {
 	@array = ();
@@ -74,24 +71,37 @@ foreach my $file (@store_array) {
 	} 
   print OUT "\n$name\t";
   my $outcodeml = "$inputdir/$file";
-  my $parser = Bio::Tools::Phylo::PAML->new(-file => $outcodeml);
-  my $result = $parser->next_result();
+  	  $flag = 0;
+  
+  open (DATA, $outcodeml) or die;
+  while(<DATA>){
+    chomp;
+	if(/^lnL\(ntime:.*\):\s+(\S+)\s+/){
+	  print OUT "$1\t";
 
-  for my $modelresult ( $result->get_NSSite_results ) {
-  # get any general model parameters: kappa (the
-  # transition/transversion ratio), NSsites model parameters ("p0",
-  # "p1", "w0", "w1", etc.), etc.
-
-  print OUT $modelresult->likelihood, "\t";
-  print OUT $modelresult->dnds_site_classes->{p}[2], "\t";
-  print OUT $modelresult->dnds_site_classes->{w}[2], "\t";
-  foreach my $model ( $result->get_NSSite_results ) {
-    	for my $sites ( $model->get_BEB_pos_selected_sites ) {
-    		    if (@$sites[3] cmp ''){
-              push (@array, @$sites[0]);
-           }
-    		  }print OUT join(', ', @array), "\t";
-    		}
+	  }
+	if(/^p:\s+\S+/){
+	 if(/(.{9})$/){
+	  my $pvalue = $1;
+	  $pvalue =~ s/\s+//g;
+	  print OUT "$pvalue\t";
+	  }
+	  }
+	if(/^w:\s+\S+/){
+      if(/(.{9})$/){
+	  my $wvalue = $1;
+	  $wvalue =~ s/\s+//g;
+	  print OUT "$wvalue\t";
+	  }
+	  }
+	if(/^Bayes Empirical Bayes/){
+	  $flag = 1;
+	  }
+	if($flag == 1){
+	if(/\s{3}(\d+)\s+\S+\s+.*?[\*|\*\*]\s+/){
+	  print OUT "$1, ";
+	  }
+	  }
   }
 }
 
@@ -144,7 +154,7 @@ __DATA__
 
 =head1 COPYRIGHT
 
-   Copyright (C) 2013 Zhuofei Xu
+   Copyright (C) 2015 Zhuofei Xu
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
